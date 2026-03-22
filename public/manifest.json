@@ -1,21 +1,17 @@
 {
-  "name": "Inova Studio App",
-  "short_name": "StudioApp",
-  "description": "Transformando problemas em ferramentas funcionais.",
+  "name": "Poupa Tanque",
+  "short_name": "PoupaTanque",
+  "description": "O Waze dos Combustíveis",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4f46e5",
+  "background_color": "#fafafa",
+  "theme_color": "#16a34a",
   "icons": [
     {
-      "src": "/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512x512.png",
+      "src": "/icon.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

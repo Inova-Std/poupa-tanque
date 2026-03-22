@@ -1,21 +1,26 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Geist } from "next/font/google";
+import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Inova Studio App",
-  description: "Transformando problemas em ferramentas funcionais.",
+  title: "Poupa Tanque - O Waze dos Combustíveis",
+  description: "Encontre os postos mais baratos da sua região com preços em tempo real.",
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Poupa Tanque",
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#4f46e5", // Indigo-600
+  themeColor: "#16a34a", // Green-600
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -27,8 +32,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={cn("font-sans", geist.variable)}>
-      <body className="antialiased bg-white selection:bg-indigo-100">
+    <html lang="pt-BR" className={cn("font-sans", inter.variable)}>
+      <body className="antialiased bg-white selection:bg-green-100">
         {children}
       </body>
     </html>
