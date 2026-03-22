@@ -33,15 +33,20 @@ export default function Map({ stations }: { stations: any[] }) {
           map.flyTo([pos.coords.latitude, pos.coords.longitude], 15, { duration: 1.5 });
         },
         (err) => {
-          alert("Erro ao buscar localização. Verifique as permissões de GPS/Localização do seu navegador.");
+          console.warn("Geolocalização não permitida ou falhou na inicialização.");
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
-    } else {
-      alert("Geolocalização não suportada no seu dispositivo.");
     }
   };
-  
+
+  // Center automatically when the map is ready
+  useEffect(() => {
+    if (map) {
+      locateUser();
+    }
+  }, [map]);
+
   return (
     <div className="w-full h-full relative">
       <MapContainer
