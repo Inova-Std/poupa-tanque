@@ -142,15 +142,15 @@ export default function Map({ stations: dbStations }: { stations: any[] }) {
   // ── Overpass: radius-based query from map centre ──────────────────────────
   const fetchOSM = useCallback(async (bounds: L.LatLngBounds) => {
     const center = bounds.getCenter();
-    // radius = half diagonal of the visible bounding box, max 10 km
+    // Minimum 5 km, or half the visible diagonal – whichever is larger, capped at 10 km
     const halfDiag = getDistanceM(
       bounds.getSouth(), bounds.getWest(),
       bounds.getNorth(), bounds.getEast()
     ) / 2;
-    const radius = Math.min(halfDiag, 10000);
+    const radius = Math.min(Math.max(halfDiag, 5000), 10000);
 
-    // Round key to ~1 km precision so only unique areas trigger fetches
-    const key = `${(center.lat).toFixed(2)},${(center.lng).toFixed(2)}`;
+    // Cache at ~11 km block precision to avoid hammering the API on every tiny pan
+    const key = `${(center.lat).toFixed(1)},${(center.lng).toFixed(1)}`;
     if (fetchedRef.current.has(key)) return;
     fetchedRef.current.add(key);
 
@@ -228,35 +228,36 @@ export default function Map({ stations: dbStations }: { stations: any[] }) {
           }`}
           style={{ minWidth: sidebarOpen ? 288 : 0 }}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 bg-white">
-            <div>
-              <p className="font-bold text-zinc-900 text-sm leading-tight">
-                {loading ? "Carregando..." : `${mergedStations.length} Postos`}
-              </p>
-              <p className="text-[11px] text-zinc-400">na área visível</p>
+          {/* App branding — lives here since the absolute header was removed from page.tsx */}
+          <div className="px-4 pt-4 pb-3 border-b border-zinc-200 bg-white">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg font-bold bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent leading-none">
+                Poupa Tanque
+              </span>
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">Beta</span>
             </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setSortBy("distance")}
-                className={`text-[11px] px-2 py-1 rounded-full font-semibold transition-colors ${
-                  sortBy === "distance"
-                    ? "bg-green-600 text-white"
-                    : "bg-zinc-100 text-zinc-600"
-                }`}
-              >
-                Dist.
-              </button>
-              <button
-                onClick={() => setSortBy("price")}
-                className={`text-[11px] px-2 py-1 rounded-full font-semibold transition-colors ${
-                  sortBy === "price"
-                    ? "bg-green-600 text-white"
-                    : "bg-zinc-100 text-zinc-600"
-                }`}
-              >
-                Preço
-              </button>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-zinc-500">
+                {loading ? "Buscando postos..." : `${mergedStations.length} postos na área`}
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setSortBy("distance")}
+                  className={`text-[11px] px-2 py-1 rounded-full font-semibold transition-colors ${
+                    sortBy === "distance" ? "bg-green-600 text-white" : "bg-zinc-100 text-zinc-600"
+                  }`}
+                >
+                  Dist.
+                </button>
+                <button
+                  onClick={() => setSortBy("price")}
+                  className={`text-[11px] px-2 py-1 rounded-full font-semibold transition-colors ${
+                    sortBy === "price" ? "bg-green-600 text-white" : "bg-zinc-100 text-zinc-600"
+                  }`}
+                >
+                  Preço
+                </button>
+              </div>
             </div>
           </div>
 
