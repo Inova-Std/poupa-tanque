@@ -1,5 +1,4 @@
 import { MapLoader } from "@/components/map-loader";
-import { ReportPriceModal } from "@/components/report-price-modal";
 import { getGasStations } from "@/actions/fuel";
 
 export const dynamic = "force-dynamic";
