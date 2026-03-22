@@ -23,16 +23,36 @@ L.Marker.prototype.options.icon = DefaultIcon;
 function LocationControl({ onLocate }: { onLocate?: (lat: number, lng: number) => void }) {
   const map = useMap();
   
-  const locateUser = () => {
-    map.locate({ setView: true, maxZoom: 15 });
-    map.once('locationfound', (e) => {
-       if(onLocate) onLocate(e.latlng.lat, e.latlng.lng);
-    });
+  const locateUser = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          map.setView([latitude, longitude], 15);
+          if (onLocate) onLocate(latitude, longitude);
+        },
+        (err) => {
+          alert("Erro ao buscar localização. Verifique as permissões de GPS/Localização do seu navegador.");
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      alert("Geolocalização não suportada no seu dispositivo.");
+    }
   };
 
   return (
-    <div className="leaflet-top leaflet-right mt-4 mr-4 pointer-events-auto" style={{ zIndex: 1000, position: 'absolute', top: 10, right: 10 }}>
-      <Button variant="secondary" size="icon" onClick={locateUser} className="shadow-md bg-white hover:bg-zinc-100">
+    <div 
+      className="leaflet-top leaflet-right mt-4 mr-4 pointer-events-auto" 
+      style={{ zIndex: 1000, position: 'absolute', top: 10, right: 10 }}
+      onMouseDown={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <Button type="button" variant="secondary" size="icon" onClick={locateUser} className="shadow-md bg-white hover:bg-zinc-100">
         <LocateFixed className="w-5 h-5 text-green-600" />
       </Button>
     </div>
