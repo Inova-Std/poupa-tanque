@@ -12,11 +12,9 @@ export function ReportPriceModal() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="lg" className="rounded-full shadow-lg h-14 px-6 bg-indigo-600 hover:bg-indigo-700 text-white gap-2 font-semibold">
-          <Plus className="w-5 h-5" />
-          Informar Preço
-        </Button>
+      <DialogTrigger className="inline-flex outline-none items-center justify-center rounded-full shadow-lg h-14 px-6 bg-indigo-600 hover:bg-indigo-700 text-white gap-2 font-semibold whitespace-nowrap">
+        <Plus className="w-5 h-5" />
+        Informar Preço
       </DialogTrigger>
       
       <DialogContent className="sm:max-w-md w-[95vw] rounded-xl max-h-[90vh] overflow-y-auto">
