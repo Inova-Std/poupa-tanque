@@ -20,26 +20,17 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-function LocationControl({ onLocate }: { onLocate?: (lat: number, lng: number) => void }) {
-  const map = useMap();
-  const controlRef = useRef<HTMLDivElement>(null);
+export default function Map({ stations }: { stations: any[] }) {
+  const [map, setMap] = useState<L.Map | null>(null);
+  const defaultPosition: [number, number] = [-15.7801, -47.9292];
   
-  useEffect(() => {
-    if (controlRef.current) {
-      L.DomEvent.disableClickPropagation(controlRef.current);
-      L.DomEvent.disableScrollPropagation(controlRef.current);
-    }
-  }, []);
-  
-  const locateUser = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const locateUser = () => {
+    if (!map) return;
     
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const { latitude, longitude } = pos.coords;
-          map.flyTo([latitude, longitude], 15, { duration: 1.5 });
-          if (onLocate) onLocate(latitude, longitude);
+          map.flyTo([pos.coords.latitude, pos.coords.longitude], 15, { duration: 1.5 });
         },
         (err) => {
           alert("Erro ao buscar localização. Verifique as permissões de GPS/Localização do seu navegador.");
@@ -50,27 +41,11 @@ function LocationControl({ onLocate }: { onLocate?: (lat: number, lng: number) =
       alert("Geolocalização não suportada no seu dispositivo.");
     }
   };
-
-  return (
-    <div 
-      ref={controlRef}
-      className="leaflet-top leaflet-right mt-4 mr-4 pointer-events-auto" 
-      style={{ zIndex: 1000, position: 'absolute', top: 10, right: 10 }}
-    >
-      <Button type="button" variant="secondary" size="icon" onClick={locateUser} className="shadow-md bg-white hover:bg-zinc-100">
-        <LocateFixed className="w-5 h-5 text-green-600" />
-      </Button>
-    </div>
-  );
-}
-
-export default function Map({ stations }: { stations: any[] }) {
-  // Center of Brazil roughly or a default location
-  const defaultPosition: [number, number] = [-15.7801, -47.9292];
   
   return (
     <div className="w-full h-full relative">
       <MapContainer
+        ref={setMap}
         center={defaultPosition}
         zoom={4}
         className="w-full h-full z-0"
@@ -97,9 +72,14 @@ export default function Map({ stations }: { stations: any[] }) {
             </Popup>
           </Marker>
         ))}
-        
-        <LocationControl />
       </MapContainer>
+
+      {/* Control Button OUTSIDE MapContainer DOM so Leaflet cannot interfere with pointer events */}
+      <div className="absolute top-4 right-4 z-[9999] pointer-events-auto">
+        <Button type="button" variant="secondary" size="icon" onClick={locateUser} className="shadow-xl bg-white hover:bg-zinc-100 flex items-center justify-center h-10 w-10 border border-zinc-200">
+          <LocateFixed className="w-5 h-5 text-green-600" />
+        </Button>
+      </div>
     </div>
   );
 }
