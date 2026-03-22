@@ -1,0 +1,54 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  score     Int      @default(0) // For "Fiscal da Gasosa" ranking
+  createdAt DateTime @default(now())
+
+  priceReports PriceReport[]
+}
+
+model GasStation {
+  id        String   @id @default(cuid())
+  name      String
+  address   String
+  lat       Float
+  lng       Float
+  brand     String?
+  createdAt DateTime @default(now())
+
+  priceReports PriceReport[]
+}
+
+model PriceReport {
+  id              String     @id @default(cuid())
+  price           Float
+  fuelType        FuelType
+  isVerified      Boolean    @default(false)
+  receiptImageUrl String?
+  createdAt       DateTime   @default(now())
+
+  user         User       @relation(fields: [userId], references: [id])
+  userId       String
+  gasStation   GasStation @relation(fields: [gasStationId], references: [id])
+  gasStationId String
+}
+
+enum FuelType {
+  GASOLINA
+  ETANOL
+  DIESEL
+  GASOLINA_ADITIVADA
+}
