@@ -11,6 +11,6 @@ const Map = dynamic(() => import("./map"), {
   ),
 });
 
-export function MapLoader() {
-  return <Map />;
+export function MapLoader({ stations }: { stations: any[] }) {
+  return <Map stations={stations} />;
 }

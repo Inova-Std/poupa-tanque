@@ -16,7 +16,7 @@ const config: Config = {
         input: "var(--input)",
         ring: "var(--ring)",
         primary: {
-          DEFAULT: "#4f46e5", // Indigo-600
+          DEFAULT: "#16a34a", // green-600
           foreground: "#ffffff",
         },
         secondary: {
