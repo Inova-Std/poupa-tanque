@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -22,16 +22,23 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 function LocationControl({ onLocate }: { onLocate?: (lat: number, lng: number) => void }) {
   const map = useMap();
+  const controlRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (controlRef.current) {
+      L.DomEvent.disableClickPropagation(controlRef.current);
+      L.DomEvent.disableScrollPropagation(controlRef.current);
+    }
+  }, []);
   
   const locateUser = (e: React.MouseEvent) => {
     e.preventDefault();
-    e.stopPropagation();
     
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
-          map.setView([latitude, longitude], 15);
+          map.flyTo([latitude, longitude], 15, { duration: 1.5 });
           if (onLocate) onLocate(latitude, longitude);
         },
         (err) => {
@@ -46,11 +53,9 @@ function LocationControl({ onLocate }: { onLocate?: (lat: number, lng: number) =
 
   return (
     <div 
+      ref={controlRef}
       className="leaflet-top leaflet-right mt-4 mr-4 pointer-events-auto" 
       style={{ zIndex: 1000, position: 'absolute', top: 10, right: 10 }}
-      onMouseDown={(e) => e.stopPropagation()}
-      onDoubleClick={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
     >
       <Button type="button" variant="secondary" size="icon" onClick={locateUser} className="shadow-md bg-white hover:bg-zinc-100">
         <LocateFixed className="w-5 h-5 text-green-600" />
