@@ -24,9 +24,13 @@ model GasStation {
   id        String   @id @default(cuid())
   name      String
   address   String
-  lat       Float
-  lng       Float
+  lat       Float?   // nullable until geocoded
+  lng       Float?   // nullable until geocoded
   brand     String?
+  cnpj      String?  @unique // ANP CNPJ — prevents duplicate imports
+  city      String?
+  state     String?
+  osmId     String?  // OSM node/way ID for deduplication
   createdAt DateTime @default(now())
 
   priceReports PriceReport[]

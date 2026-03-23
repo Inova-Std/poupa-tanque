@@ -6,12 +6,16 @@ import { FuelType } from "@prisma/client"
 
 export async function getGasStations() {
   return await prisma.gasStation.findMany({
+    where: {
+      NOT: { lat: null }, // only return stations with coordinates
+    },
     include: {
       priceReports: {
         orderBy: { createdAt: 'desc' },
         take: 1
       }
-    }
+    },
+    take: 200,
   })
 }
 
@@ -33,8 +37,10 @@ export async function submitPrice(data: {
   price: number,
   lat: number,
   lng: number,
+  city?: string,
+  state?: string,
+  cnpj?: string,
 }) {
-  // Mock authentication logic for MVP - create an anonymous user if none exists
   let user = await prisma.user.findFirst();
   if (!user) {
     user = await prisma.user.create({
@@ -42,25 +48,52 @@ export async function submitPrice(data: {
     });
   }
 
-  // Award the user points for their collaboration
   await prisma.user.update({
     where: { id: user.id },
-    data: { score: { increment: 50 } } // 50 points per report
+    data: { score: { increment: 50 } }
   });
 
-  // Find or create the Gas Station
-  let station = await prisma.gasStation.findFirst({
-    where: { name: data.stationName } // Real system would use geofencing distance
-  });
+  // 1. Match by CNPJ (most precise)
+  let station = data.cnpj
+    ? await prisma.gasStation.findUnique({ where: { cnpj: data.cnpj } })
+    : null;
 
+  // 2. Match by name + city
+  if (!station && data.city) {
+    station = await prisma.gasStation.findFirst({
+      where: {
+        name: { contains: data.stationName, mode: "insensitive" },
+        city: { equals: data.city.toUpperCase(), mode: "insensitive" },
+        ...(data.state ? { state: { equals: data.state.toUpperCase(), mode: "insensitive" } } : {}),
+      },
+    });
+  }
+
+  // 3. Match by name only
+  if (!station) {
+    station = await prisma.gasStation.findFirst({
+      where: { name: { contains: data.stationName, mode: "insensitive" } },
+    });
+  }
+
+  // 4. Create new record
   if (!station) {
     station = await prisma.gasStation.create({
       data: {
         name: data.stationName,
-        address: "Endereço Automático do GPS",
+        address: "Endereço via GPS",
         lat: data.lat,
         lng: data.lng,
+        city: data.city?.toUpperCase(),
+        state: data.state?.toUpperCase(),
+        cnpj: data.cnpj ?? null,
       }
+    });
+  } else if (!station.lat && data.lat) {
+    // Fill coordinates for ANP records that had none
+    await prisma.gasStation.update({
+      where: { id: station.id },
+      data: { lat: data.lat, lng: data.lng },
     });
   }
 
@@ -68,7 +101,7 @@ export async function submitPrice(data: {
     data: {
       price: data.price,
       fuelType: data.fuelType,
-      isVerified: false, 
+      isVerified: false,
       userId: user.id,
       gasStationId: station.id,
     }
