@@ -101,13 +101,19 @@ function StationCard({
 export default function Map({ stations: dbStations }: { stations: any[] }) {
   const [mapInst, setMapInst] = useState<L.Map | null>(null);
   const [osmStations, setOsmStations] = useState<StationData[]>([]);
+  const [dbLocalStations, setDbLocalStations] = useState<StationData[]>([]);
   const [userPos, setUserPos] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
+  const [userCity, setUserCity] = useState<{ city: string; state: string } | null>(null);
   const [selectedStation, setSelectedStation] = useState<StationData | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sortBy, setSortBy] = useState<"distance" | "price">("distance");
   const [loading, setLoading] = useState(false);
+  const [geocodingCity, setGeocodingCity] = useState(false);
+  const [geocodeProgress, setGeocodeProgress] = useState<{ total: number; coded: number } | null>(null);
   const fetchedRef = useRef<Set<string>>(new Set());
   const watchIdRef = useRef<number | null>(null);
+  const geocodedCitiesRef = useRef<Set<string>>(new Set());
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const defaultCenter: [number, number] = [-15.7801, -47.9292];
 
@@ -132,6 +138,69 @@ export default function Map({ stations: dbStations }: { stations: any[] }) {
       mapInst.flyTo([userPos.lat, userPos.lng], 15, { duration: 1.5 });
     }
   }, [mapInst, userPos?.lat, userPos?.lng]);
+
+  // ── On-demand city geocoding ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!userPos) return;
+
+    // 1. Reverse geocode to get city name (once)
+    const getCity = async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${userPos.lat}&lon=${userPos.lng}&format=json`,
+          { headers: { "User-Agent": "PoupaTanque/1.0" } }
+        );
+        const data = await res.json();
+        const city = (data.address?.city || data.address?.town || data.address?.village || "").toUpperCase();
+        const state = (data.address?.state_code || "").toUpperCase().replace("BR-", "");
+        if (city && state) setUserCity({ city, state });
+      } catch { /* ignore */ }
+    };
+    getCity();
+  }, [userPos?.lat, userPos?.lng]);
+
+  useEffect(() => {
+    if (!userCity) return;
+    const key = `${userCity.city}-${userCity.state}`;
+    if (geocodedCitiesRef.current.has(key)) return;
+    geocodedCitiesRef.current.add(key);
+
+    // 2. Trigger background geocoding for this city
+    const trigger = async () => {
+      setGeocodingCity(true);
+      const res = await fetch(`/api/geocode-city?city=${encodeURIComponent(userCity.city)}&state=${encodeURIComponent(userCity.state)}`);
+      const data = await res.json();
+      setGeocodeProgress({ total: data.total, coded: data.coded });
+      setGeocodingCity(false);
+    };
+    trigger();
+
+    // Poll progress every 4s while geocoding runs in background
+    const progressTimer = setInterval(async () => {
+      const res = await fetch(`/api/geocode-city?city=${encodeURIComponent(userCity.city)}&state=${encodeURIComponent(userCity.state)}`);
+      const data = await res.json();
+      setGeocodeProgress({ total: data.total, coded: data.coded });
+      if (data.pending === 0) clearInterval(progressTimer);
+    }, 4000);
+
+    // 3. Poll DB for stations in this city every 8s (they appear as geocoding completes)
+    const poll = async () => {
+      const res = await fetch(`/api/stations/search?city=${encodeURIComponent(userCity.city)}&state=${encodeURIComponent(userCity.state)}`);
+      const data = await res.json();
+      const withCoords: StationData[] = (data.stations || []).filter((s: any) => s.lat && s.lng).map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        lat: s.lat,
+        lng: s.lng,
+        priceReports: s.priceReports,
+        isOsm: false,
+      }));
+      setDbLocalStations(withCoords);
+    };
+    poll();
+    pollIntervalRef.current = setInterval(poll, 8000);
+    return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); };
+  }, [userCity]);
 
   const flyToUser = useCallback(() => {
     if (mapInst && userPos) {
@@ -190,12 +259,13 @@ export default function Map({ stations: dbStations }: { stations: any[] }) {
     }
   }, []);
 
-  // ── Merge DB + OSM (deduplicate within ~60 m) ────────────────────────────
+  // ── Merge DB + OSM + local DB (deduplicate within ~60 m) ─────────────────
+  const allDb = [...(dbStations || []), ...dbLocalStations];
   const mergedStations: StationData[] = [
-    ...(dbStations || []),
+    ...allDb,
     ...osmStations.filter(
-      (osm) => !(dbStations || []).some(
-        (db) => Math.hypot(db.lat - osm.lat, db.lng - osm.lng) < 0.0006
+      (osm) => !allDb.some(
+        (db) => db.lat && db.lng && Math.hypot(db.lat - osm.lat, db.lng - osm.lng) < 0.0006
       )
     ),
   ];
@@ -238,8 +308,27 @@ export default function Map({ stations: dbStations }: { stations: any[] }) {
             </div>
             <div className="flex items-center justify-between">
               <p className="text-xs text-zinc-500">
-                {loading ? "Buscando postos..." : `${mergedStations.length} postos na área`}
+                {loading
+                  ? "Buscando postos..."
+                  : geocodingCity && userCity
+                  ? `📍 Mapeando ${userCity.city}...`
+                  : `${mergedStations.length} postos na área`}
               </p>
+              {/* Geocoding progress bar */}
+              {geocodeProgress && geocodeProgress.coded < geocodeProgress.total && (
+                <div className="mt-2 w-full">
+                  <div className="flex justify-between text-[10px] text-zinc-400 mb-0.5">
+                    <span>Mapeando postos da cidade</span>
+                    <span>{geocodeProgress.coded}/{geocodeProgress.total}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-zinc-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.round((geocodeProgress.coded / geocodeProgress.total) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setSortBy("distance")}
